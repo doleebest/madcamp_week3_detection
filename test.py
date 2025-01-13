@@ -1,6 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import vision
+from datetime import datetime
+import mysql.connector  # 이 줄 추가
+from datetime import datetime  # 이 줄 추가
 import os
 import re
 
@@ -9,6 +12,70 @@ CORS(app)
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'madcamp-week3.json'
 client = vision.ImageAnnotatorClient()
+
+# MySQL 데이터베이스 설정
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': 'sojeong0@',
+    'database': 'fridge'
+}
+
+def get_db_connection():
+    return mysql.connector.connect(**DB_CONFIG)
+
+def save_detections_to_db(detections, user_email, image_url=None):
+    """
+    탐지된 객체들을 데이터베이스에 저장
+    Spring Entity 구조에 맞춰 저장
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    saved_items = []
+    try:
+        for detection in detections:
+            # detected_items 테이블에 데이터 삽입
+            query = """
+            INSERT INTO detected_items 
+            (item_name, detected_at, image_url, amount, unit, user_id) 
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            
+            current_time = datetime.now()
+            
+            values = (
+                detection['label'],          # item_name
+                current_time,                # detected_at
+                image_url,                   # image_url
+                float(detection['amount']),  # amount
+                detection['unit'],           # unit
+                user_email                   # user_id (Google email)
+            )
+            
+            cursor.execute(query, values)
+            item_id = cursor.lastrowid
+            
+            saved_item = {
+                'id': item_id,
+                'itemName': detection['label'],
+                'userId': user_email,
+                'detectedAt': current_time.isoformat(),
+                'imageUrl': image_url,
+                'amount': detection['amount'],
+                'unit': detection['unit']
+            }
+            saved_items.append(saved_item)
+        
+        conn.commit()
+        return saved_items
+        
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
 
 # 카테고리 기반 정보
 CATEGORY_INFO = {
@@ -136,6 +203,11 @@ def detect_objects():
         print("Error: No image in request")
         return jsonify({'error': 'No image provided'}), 400
     
+    if 'userEmail' not in request.form:
+        print("Error: No userEmail provided")
+        return jsonify({'error': 'No userEmail provided'}), 400
+    
+    user_email = request.form['userEmail']
     file = request.files['image']
     content = file.read()
     print(f"Received image size: {len(content)} bytes")
@@ -143,7 +215,7 @@ def detect_objects():
     image = vision.Image(content=content)
     
     try:
-        # Vision API 호출
+        # Vision API 호출 및 탐지 로직 (기존과 동일)
         vision_response = client.annotate_image({
             'image': image,
             'features': [
@@ -198,7 +270,18 @@ def detect_objects():
                     seen_labels.add(label.lower())
         
         print(f"\nFinal detections: {detections}")
-        return jsonify(detections)
+        
+        # 데이터베이스에 저장하고 저장된 결과 반환
+        try:
+            saved_items = save_detections_to_db(
+                detections=detections,
+                user_email=user_email,
+                image_url=None
+            )
+            return jsonify(saved_items)  # 저장된 아이템 정보 반환
+        except Exception as db_error:
+            print(f"Database error: {str(db_error)}")
+            return jsonify({'error': 'Failed to save to database'}), 500
         
     except Exception as e:
         print(f"Error occurred: {str(e)}")
