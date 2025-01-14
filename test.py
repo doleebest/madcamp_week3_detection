@@ -289,5 +289,53 @@ def detect_objects():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+
+# Fetch Data from a Table
+@app.route('/user', methods=['GET'])
+def get_data():
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor(dictionary=True)
+
+        # Query example
+        query = "SELECT * FROM users"
+        cursor.execute(query)
+        results = cursor.fetchall()
+
+        return jsonify(results), 200
+    except mysql.connector.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+@app.route('/user', methods=['POST'])
+def insert_user():
+    try:
+        data = request.json
+        user_id = data.get('id')
+        email = data.get('email')
+        name = data.get('name')
+        picture = data.get('picture')
+        role = 'USER'
+
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+
+        # Insert example
+        query = "INSERT INTO users (id, email, name, picture, role) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(query, (user_id, email, name, picture, role))
+        connection.commit()
+
+        return jsonify({"message": "User inserted successfully!"}), 201
+    except mysql.connector.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
