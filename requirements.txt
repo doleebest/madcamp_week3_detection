@@ -1,5 +1,5 @@
 flask
 flask-cors
-google-cloud-vision==2.4.2
-mysql-connector-python==8.0.26
-boto3==1.28.44
+google-cloud-vision
+mysql-connector-python
+boto3

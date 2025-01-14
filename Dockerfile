@@ -4,14 +4,17 @@ FROM python:3.12-slim
 # Step 2: Set the working directory in the container
 WORKDIR /app
 
-# Step 3: Copy the current directory contents into the container
+# Step 3: Install required system packages
+RUN apt-get update && apt-get install -y python3-distutils
+
+# Step 4: Copy the current directory contents into the container
 COPY . /app
 
-# Step 4: Install any needed packages specified in requirements.txt
+# Step 5: Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Step 5: Expose the port that the app runs on
+# Step 6: Expose the port that the app runs on
 EXPOSE 5001
 
-# Step 6: Define the command to run the application
-CMD ["python", "application.py"]
+# Step 7: Define the command to run the application
+CMD ["python", "test.py"]
