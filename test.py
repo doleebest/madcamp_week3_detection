@@ -15,10 +15,11 @@ client = vision.ImageAnnotatorClient()
 
 # MySQL 데이터베이스 설정
 DB_CONFIG = {
-    'host': 'localhost',
+    'host': 'fridge-rds.cjymas6uwg1h.ap-northeast-2.rds.amazonaws.com',
     'user': 'root',
-    'password': 'sojeong0@',
-    'database': 'fridge'
+    'password': 'sojeong0',
+    'database': 'myfridge',
+    'port' : 3306
 }
 
 def get_db_connection():

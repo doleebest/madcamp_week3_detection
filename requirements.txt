@@ -1,0 +1,5 @@
+flask==2.0.1
+flask-cors==3.0.10
+google-cloud-vision==2.4.2
+mysql-connector-python==8.0.26
+boto3==1.28.44
